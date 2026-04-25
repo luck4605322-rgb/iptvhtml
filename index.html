@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>IPTV 服务器本地检测工具</title>
+    <style>
+        body { font-family: "微软雅黑", sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; }
+        button { padding: 15px 30px; font-size: 18px; background: #00aa00; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🚀 IPTV 服务器本地检测工具</h1>
+    <p>输入信息后，点击下方按钮将自动启动您本地的检测程序（使用您的本地网络进行真实测试）</p>
+
+    <label>用户名:</label><br>
+    <input type="text" id="username" placeholder="输入用户名">
+
+    <label>密码:</label><br>
+    <input type="password" id="password" placeholder="输入密码">
+
+    <label>服务器地址（一行一个）:</label><br>
+    <textarea id="servers" rows="10" placeholder="http://server1.com:8080&#10;http://server2.tv:12345"></textarea>
+
+    <br><br>
+    <button onclick="launchTester()">🚀 在本地网络开始检测</button>
+
+    <p style="color: gray; margin-top: 30px;">
+        注意：<br>
+        1. 您需要先下载并安装 IPTV_Tester.exe（安装程序会自动注册协议）<br>
+        2. 第一次点击时浏览器可能会弹出确认窗口，请允许<br>
+        3. 检测结果会直接在本地程序窗口中显示
+    </p>
+
+    <script>
+    function launchTester() {
+        const user = encodeURIComponent(document.getElementById('username').value);
+        const pass = encodeURIComponent(document.getElementById('password').value);
+        let servers = document.getElementById('servers').value.trim();
+        servers = encodeURIComponent(servers.replace(/\n/g, '|'));  // 用 | 分隔多行
+
+        const protocolUrl = `iptvtester://?username=${user}&password=${pass}&servers=${servers}`;
+
+        if (confirm('即将启动本地 IPTV 检测工具，使用您的本地网络进行测试。\n\n是否继续？')) {
+            window.location.href = protocolUrl;
+        }
+    }
+    </script>
+</body>
+</html>
