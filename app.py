@@ -1,12 +1,11 @@
 import streamlit as st
 import requests
 import time
-from streamlit_javascript import st_javascript  # 新增依赖
 
 # ==================== 多国语言字典 ====================
 LANGUAGES = {
     "简体中文": {
-        "title": "IPTVNator 批量检测工具 v1.8",
+        "title": "IPTVNator 批量检测工具 v1.9",
         "username": "用户名:",
         "password": "密码:",
         "servers": "服务器地址（一行一个）:",
@@ -15,7 +14,7 @@ LANGUAGES = {
         "warning": "请填写服务器列表、账号和密码！",
         "running": "🚀 开始检测 {0} 个服务器...",
         "detecting": "[{0}/{1}] 检测中: {2}",
-        "complete": "✅ 批量检测完成！共检测 {0} 个服务器。成功 {1} 个",
+        "complete": "✅ 批量检测完成！共检测 {0} 个服务器，成功 {1} 个",
         "http_error": "❌ HTTP错误 {0} | 耗时 {1}s",
         "no_userinfo": "❌ 登录失败（无 user_info） | 耗时 {0}s",
         "timeout": "❌ 超时 (>15s)",
@@ -24,10 +23,11 @@ LANGUAGES = {
         "available": "✅ 可用 | 耗时 {0}s | 状态: {1} | 过期: {2}",
         "unavailable": "❌ 不可用 | 耗时 {0}s",
         "your_ip": "您的当前访问 IP：",
-        "ip_note": "（此 IP 用于本次检测，反映您的本地网络出口）"
+        "ip_note": "（此 IP 反映您本地的网络出口情况）",
+        "ip_unavailable": "无法获取 IP（可能是本地开发或网络问题）"
     },
     "English": {
-        "title": "IPTVNator Batch Tester v1.8",
+        "title": "IPTVNator Batch Tester v1.9",
         "username": "Username:",
         "password": "Password:",
         "servers": "Server Addresses (one per line):",
@@ -44,7 +44,8 @@ LANGUAGES = {
         "available": "✅ Available | Time {0}s | Status: {1} | Exp: {2}",
         "unavailable": "❌ Unavailable | Time {0}s",
         "your_ip": "Your Current IP: ",
-        "ip_note": "(This IP is used for this test, reflecting your local network exit)"
+        "ip_note": "(This IP reflects your local network exit)",
+        "ip_unavailable": "Unable to get IP (local dev or network issue)"
     }
 }
 
@@ -53,22 +54,15 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
 }
 
-# ==================== 获取客户端真实 IP（浏览器查询） ====================
+# ==================== 获取客户端 IP ====================
 def get_client_ip():
     try:
-        # 使用浏览器端 JavaScript 查询公共 IP 服务
-        script = '''
-        await fetch("https://api.ipify.org?format=json")
-            .then(response => response.json())
-            .then(data => data.ip)
-            .catch(() => "无法获取");
-        '''
-        ip = st_javascript(script)
-        if isinstance(ip, str) and ip != "无法获取":
+        ip = st.context.ip_address
+        if ip:
             return ip
         return "获取中..."
     except:
-        return "获取失败（请刷新页面）"
+        return None
 
 # ==================== 单个服务器检测（简化版） ====================
 def test_single_server(server, username, password, trans):
@@ -120,10 +114,15 @@ def main():
     lang = st.sidebar.selectbox("界面语言 / Language", options=list(LANGUAGES.keys()), index=0)
     trans = LANGUAGES.get(lang, LANGUAGES["简体中文"])
 
-    st.title(trans.get("title", "IPTVNator 批量检测工具 v1.8"))
+    st.title(trans.get("title", "IPTVNator 批量检测工具 v1.9"))
     
     # 显示本地 IP
-    st.markdown(f"**{trans.get('your_ip', '')}** `{get_client_ip()}`  \n{trans.get('ip_note', '')}")
+    ip = get_client_ip()
+    if ip:
+        st.markdown(f"**{trans.get('your_ip', '')}** `{ip}`  \n{trans.get('ip_note', '')}")
+    else:
+        st.markdown(f"**{trans.get('your_ip', '')}** {trans.get('ip_unavailable', '')}")
+    
     st.markdown("**检测使用您当前的网络（手机/电脑本地网络）**")
 
     username = st.text_input(trans.get("username", "用户名:"), "")
@@ -132,7 +131,7 @@ def main():
     servers_text = st.text_area(
         trans.get("servers", "服务器地址（一行一个）:"), 
         height=220,
-        placeholder="rapide-leon.online\nsmart.lionsmart.cc\nlion-star25.com"
+        placeholder="rapide-leon.online\nsmart.lionsmart.cc\nlion-star25.com\n一行一个"
     )
 
     if st.button(trans.get("start_btn", "🚀 开始批量检测"), type="primary"):
@@ -147,7 +146,7 @@ def main():
 
         progress_bar = st.progress(0)
         status_text = st.empty()
-        output_area = st.empty()
+        output_area = st.empty()   # 专门用于一行一个结果
 
         results = []
         success_count = 0
@@ -162,7 +161,9 @@ def main():
             if success:
                 success_count += 1
             
-            results.append(f"{server}  →  {result}")
+            # 严格一行一个结果
+            line = f"{server}  →  {result}"
+            results.append(line)
             output_area.write("\n".join(results))
             
             time.sleep(0.35)
@@ -170,7 +171,7 @@ def main():
         progress_bar.progress(100)
         st.success(trans.get("complete", "").format(total, success_count))
 
-    st.caption("v1.8 • 显示本地真实 IP + 只检测可用性 + 进度条")
+    st.caption("v1.9 • 一行一个结果 • 显示本地 IP • 使用当前网络检测")
 
 if __name__ == "__main__":
     main()
