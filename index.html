@@ -3,97 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IPTVNator 批量检测网页版</title>
+    <title>IPTVNator 手机批量检测</title>
     <style>
-        :root { --primary: #007AFF; --success: #34C759; --danger: #FF3B30; --bg: #F2F2F7; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #1C1C1E; }
+        :root { --primary: #007AFF; --bg: #F2F2F7; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .card { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        h3 { margin: 0 0 15px 0; font-size: 18px; }
-        .input-item { margin-bottom: 12px; }
-        label { display: block; font-size: 13px; color: #8E8E93; margin-bottom: 5px; margin-left: 4px; }
-        input, textarea { width: 100%; border: 1px solid #D1D1D6; border-radius: 8px; padding: 12px; font-size: 15px; box-sizing: border-box; background: #FFF; }
-        button { width: 100%; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer; }
-        button:disabled { background: #AEAEB2; }
-        #results { margin-top: 15px; font-family: "SF Mono", Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; background: #1C1C1E; color: #32D74B; padding: 12px; border-radius: 8px; min-height: 150px; }
-        .hint { font-size: 12px; color: #FF9500; margin-top: 10px; display: block; line-height: 1.4; }
+        h3 { margin: 0 0 15px 0; font-size: 18px; text-align: center; }
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 13px; color: #8E8E93; margin-bottom: 5px; padding-left: 4px; }
+        input, textarea { width: 100%; border: 1px solid #D1D1D6; border-radius: 8px; padding: 12px; font-size: 15px; box-sizing: border-box; }
+        button { width: 100%; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 14px; font-size: 16px; font-weight: 600; margin-top: 10px; }
+        #log { margin-top: 15px; font-family: monospace; font-size: 12px; background: #1C1C1E; color: #32D74B; padding: 12px; border-radius: 8px; height: 250px; overflow-y: auto; white-space: pre-wrap; }
+        .warning-text { font-size: 11px; color: #FF9500; margin-top: 8px; display: block; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3>IPTV 批量检测 v1.5 (Web)</h3>
-    <div class="input-item">
+    <h3>IPTV 批量检测 (Xtream版)</h3>
+    <div class="input-group">
         <label>用户名 (Username)</label>
         <input type="text" id="username" placeholder="请输入账号">
     </div>
-    <div class="input-item">
+    <div class="input-group">
         <label>密码 (Password)</label>
         <input type="password" id="password" placeholder="请输入密码">
     </div>
-    <div class="input-item">
-        <label>服务器列表 (每行一个)</label>
-        <textarea id="serverList" rows="5" placeholder="http://example.com:8080"></textarea>
+    <div class="input-group">
+        <label>服务器地址 (每行一个)</label>
+        <textarea id="serverList" rows="4" placeholder="http://example.com:8080"></textarea>
     </div>
-    <button id="runBtn" onclick="startBatchTest()">🚀 开始检测</button>
-    <span class="hint">⚠️ 手机端提醒：如果测试全部失败，请点击浏览器地址栏左侧，在“网站设置”中允许“不安全内容”。</span>
+    <button id="runBtn" onclick="doTest()">🚀 开始检测本地网络</button>
+    <span class="warning-text">⚠️ 提示：如果手机检测全部失败，请在浏览器设置中允许“显示不安全内容”，因为很多 IPTV 采用 HTTP 协议。</span>
 </div>
 
-<div class="card">
-    <div id="results">等待操作...</div>
+<div class="card" id="resultCard" style="display:none;">
+    <div id="log">等待任务开始...</div>
 </div>
 
 <script>
-    async function checkServer(server, user, pass) {
-        let baseUrl = server.endsWith('/') ? server.slice(0, -1) : server;
-        // 构造 Xtream API 登录地址
-        const apiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-        
-        const startTime = Date.now();
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时
-
-            // 注意：Web端由于跨域限制，通常无法读取详细的 JSON 内容，
-            // 除非服务器配置了 CORS 允许。这里主要探测接口响应。
-            const response = await fetch(apiUrl, { 
-                mode: 'no-cors', // 必须使用 no-cors 才能在网页发起跨域请求
-                signal: controller.signal 
-            });
-
-            clearTimeout(timeoutId);
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            return `✅ [连通成功] 耗时: ${duration}s`;
-        } catch (err) {
-            if (err.name === 'AbortError') return `❌ [超时] 服务器响应太慢`;
-            return `❌ [连接失败] 地址无效或网络阻塞`;
-        }
-    }
-
-    async function startBatchTest() {
+    async function doTest() {
         const user = document.getElementById('username').value.trim();
         const pass = document.getElementById('password').value.trim();
-        const servers = document.getElementById('serverList').value.split('\n').map(s => s.trim()).filter(s => s);
-        const logBox = document.getElementById('results');
+        const servers = document.getElementById('serverList').value.split('\n').filter(s => s.trim());
+        const log = document.getElementById('log');
         const btn = document.getElementById('runBtn');
 
-        if (!user || !pass || servers.length === 0) {
-            alert("请完整填写账号、密码和服务器列表！");
-            return;
-        }
+        if (!user || !pass || !servers.length) return alert("请填写完整信息");
 
         btn.disabled = true;
-        logBox.innerHTML = `🚀 开始检测 ${servers.length} 个服务器...\n\n`;
+        document.getElementById('resultCard').style.display = 'block';
+        log.innerHTML = `开始检测 ${servers.length} 个服务器...\n\n`;
 
-        for (let i = 0; i < servers.length; i++) {
-            const s = servers[i];
-            logBox.innerHTML += `[${i+1}/${servers.length}] 检测中: ${s}...\n`;
-            const result = await checkServer(s, user, pass);
-            logBox.innerHTML += `${result}\n\n`;
-            logBox.scrollTop = logBox.scrollHeight;
+        for (const s of servers) {
+            let url = s.trim();
+            if (!url.startsWith('http')) url = 'http://' + url;
+            // 构造 Xtream API 登录请求
+            const apiUrl = `${url.replace(/\/$/, "")}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+            
+            log.innerHTML += `检测中: ${url}\n`;
+            const start = Date.now();
+            
+            try {
+                // 使用 no-cors 探测链路连通性
+                await fetch(apiUrl, { mode: 'no-cors' });
+                const time = ((Date.now() - start) / 1000).toFixed(2);
+                log.innerHTML += `✅ 链路通畅 (${time}s)\n\n`;
+            } catch (e) {
+                log.innerHTML += `❌ 无法访问或被拦截\n\n`;
+            }
+            log.scrollTop = log.scrollHeight;
         }
-
-        logBox.innerHTML += `✅ 批量检测完成！`;
+        
         btn.disabled = false;
+        log.innerHTML += "检测任务结束。";
     }
 </script>
 </body>
